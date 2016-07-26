@@ -20,5 +20,25 @@ do_build() {
 }
 
 do_install() {
-  return 0
+  build_path=$pkg_prefix/build
+
+  mkdir -p $build_path
+  cp -r ./output/build/* $build_path
+  rm -rf $build_path/webapps/docs
+  rm -rf $build_path/webapps/examples
+
+  # make bin executable
+  chmod +x $build_path/bin/*.sh
+
+  # swap the existing conf/server.xml for templateized
+  rm -f $build_path/conf/server.xml
+  ln -s $pkg_svc_config_path/server.xml $build_path/conf/server.xml
+
+  # make logs directory
+  mkdir -p $build_path/logs
+  chmod +w $build_path/logs
+
+  # make tmp directory\
+  mkdir -p $build_path/temp
+  chmod +w $build_path/temp
 }

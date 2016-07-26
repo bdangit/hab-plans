@@ -1,0 +1,4 @@
+# The port number that tomcat is listening on
+port = 8080
+ajp_port = 8009
+shutdown_port = 8005
