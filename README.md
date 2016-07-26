@@ -7,9 +7,18 @@ bdangit habitat plans
 
 ### Build
 
-    studio new
-    studio enter
+    $ hab studio new
+    $ hab studio enter
 
-    build bdangit/tomcat
+    (hab)$ build {plan}
 
 ### Run
+
+From within habitat studio:
+
+    (hab)$ hab start bdangit/{plan}
+
+Dockerized:
+
+    (hab)$ hab export docker bdangit/{plan}
+    $ docker run -it bdangit/{plan}
