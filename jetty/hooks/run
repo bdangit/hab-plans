@@ -1,0 +1,9 @@
+#!/bin/bash
+
+export JETTY_BASE="{{pkg.svc_var_path}}"
+export JETTY_HOME="{{pkg.path}}/jetty"
+export JAVA_HOME
+JAVA_HOME="$(pkg_path_for core/jdk8)"
+
+cd $JETTY_BASE
+exec java -jar $JETTY_HOME/start.jar 2>&1
