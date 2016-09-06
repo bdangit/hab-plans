@@ -1,0 +1,40 @@
+#!/bin/sh
+
+exec 2>&1
+
+cd /opt/couchbase || exit
+mkdir -p var/lib/couchbase \
+         var/lib/couchbase/config \
+         var/lib/couchbase/data \
+         var/lib/couchbase/stats \
+         var/lib/couchbase/logs \
+         var/lib/moxi
+
+chown -R hab:hab var
+exec chpst -uhab  /opt/couchbase/bin/couchbase-server -- -noinput
+
+### need to debug this
+# couchbase-server-enterprise(SV): Starting
+# couchbase-server-enterprise(O): /opt/couchbase/bin/erl: line 28: /opt/couchbase/lib/erlang/erts-5.10.4.0.0.1/bin/erlexec: No such file or directory
+# hab-sup(SV): couchbase-server-enterprise - process 18092 died with exit code 1
+# hab-sup(SV): couchbase-server-enterprise - Service exited
+# couchbase-server-enterprise(SV): Starting
+# couchbase-server-enterprise(O): /opt/couchbase/bin/erl: line 28: /opt/couchbase/lib/erlang/erts-5.10.4.0.0.1/bin/erlexec: No such file or directory
+# hab-sup(SV): couchbase-server-enterprise - process 18105 died with exit code 1
+# hab-sup(SV): couchbase-server-enterprise - Service exited
+# couchbase-server-enterprise(SV): Starting
+# couchbase-server-enterprise(O): /opt/couchbase/bin/erl: line 28: /opt/couchbase/lib/erlang/erts-5.10.4.0.0.1/bin/erlexec: No such file or directory
+# hab-sup(SV): couchbase-server-enterprise - process 18118 died with exit code 1
+# hab-sup(SV): couchbase-server-enterprise - Service exited
+# couchbase-server-enterprise(SV): Starting
+# couchbase-server-enterprise(O): /opt/couchbase/bin/erl: line 28: /opt/couchbase/lib/erlang/erts-5.10.4.0.0.1/bin/erlexec: No such file or directory
+# hab-sup(SV): couchbase-server-enterprise - process 18131 died with exit code 1
+# hab-sup(SV): couchbase-server-enterprise - Service exited
+# couchbase-server-enterprise(SV): Starting
+# couchbase-server-enterprise(O): /opt/couchbase/bin/erl: line 28: /opt/couchbase/lib/erlang/erts-5.10.4.0.0.1/bin/erlexec: No such file or directory
+# hab-sup(SV): couchbase-server-enterprise - process 18144 died with exit code 1
+# hab-sup(SV): couchbase-server-enterprise - Service exited
+# couchbase-server-enterprise(SV): Starting
+# couchbase-server-enterprise(O): /opt/couchbase/bin/erl: line 28: /opt/couchbase/lib/erlang/erts-5.10.4.0.0.1/bin/erlexec: No such file or directory
+# hab-sup(SV): couchbase-server-enterprise - process 18157 died with exit code 1
+# hab-sup(SV): couchbase-server-enterprise - Service exited
