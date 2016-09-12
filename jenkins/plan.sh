@@ -15,6 +15,9 @@ pkg_deps=(
 )
 
 pkg_build_deps=(
+  core/patchelf
+  core/glibc
+  core/gcc-libs
   core/maven
   core/cacerts
   core/node
@@ -25,8 +28,15 @@ do_build() {
   JAVA_HOME=$(pkg_path_for core/jdk8)
   build_line "JAVA_HOME=$JAVA_HOME"
 
-  cd "$HAB_CACHE_SRC_PATH/jenkins-${pkg_dirname}"
+  rm -rf "$pkg_name-$pkg_version"
+  pushd "$HAB_CACHE_SRC_PATH/jenkins-${pkg_dirname}" > /dev/null
+
+  patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" \
+           --set-rpath "${LD_RUN_PATH}":$(pkg_path_for core/gcc-libs)/lib \
+           ./war/node/node
+
   mvn clean install -pl war -am -DskipTests
+  popd > /dev/null
 }
 
 do_install() {
