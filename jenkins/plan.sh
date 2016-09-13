@@ -12,15 +12,14 @@ pkg_expose=(8080)
 pkg_deps=(
   core/jdk8/8u102
   core/coreutils
+  core/glibc
+  core/gcc-libs
 )
 
 pkg_build_deps=(
   core/patchelf
-  core/glibc
-  core/gcc-libs
   core/maven
-  core/cacerts
-  core/node
+  core/patch
 )
 
 do_build() {
@@ -28,14 +27,24 @@ do_build() {
   JAVA_HOME=$(pkg_path_for core/jdk8)
   build_line "JAVA_HOME=$JAVA_HOME"
 
-  rm -rf "$pkg_name-$pkg_version"
   pushd "$HAB_CACHE_SRC_PATH/jenkins-${pkg_dirname}" > /dev/null
 
+  build_line "Patching ./war/pom.xml so that we can have time to fix 'node'"
+  patch ./war/pom.xml "${PLAN_CONTEXT}/fix_node.patch"
+
+  build_line "Initialize Jenkins build"
+  mvn clean initialize -pl war -am -DskipTests
+
+  build_line "Patching included 'node' binary"
+
+  export LD_RUN_PATH
+  LD_RUN_PATH="${LD_RUN_PATH}":"$pkg_prefix/lib/amd64/jli":$(pkg_path_for core/gcc-libs)/lib
   patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" \
-           --set-rpath "${LD_RUN_PATH}":$(pkg_path_for core/gcc-libs)/lib \
+           --set-rpath "${LD_RUN_PATH}" \
            ./war/node/node
 
-  mvn clean install -pl war -am -DskipTests
+  build_line "Build the rest of Jenkins"
+  mvn install -pl war -am -DskipTests
   popd > /dev/null
 }
 

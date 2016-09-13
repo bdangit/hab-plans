@@ -1,0 +1,11 @@
+--- pom.xml	2016-09-13 05:07:07.000000000 +0000
++++ fixpom.xml	2016-09-13 05:07:31.000000000 +0000
+@@ -722,7 +722,7 @@
+               </execution>
+ 
+               <execution>
+-                <phase>initialize</phase>
++                <phase>generate-sources</phase>
+                 <id>npm install</id>
+                 <goals>
+                   <goal>npm</goal>
