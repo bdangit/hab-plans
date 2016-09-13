@@ -4,4 +4,4 @@ export JENKINS_HOME="{{pkg.svc_var_path}}"
 export JAVA_HOME
 JAVA_HOME="$(pkg_path_for core/jdk8)"
 
-exec java -jar {{pkg.path}}/jenkins.war
+exec java -jar {{pkg.path}}/jenkins.war 2>&1
