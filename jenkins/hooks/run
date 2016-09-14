@@ -1,7 +1,11 @@
 #!/bin/bash
 
 export JENKINS_HOME="{{pkg.svc_var_path}}"
+
 export JAVA_HOME
-JAVA_HOME="$(pkg_path_for core/jdk8)"
+JAVA_HOME="$(hab pkg path core/jdk8)"
+
+export LD_LIBRARY_PATH
+LD_LIBRARY_PATH="$(hab pkg path core/gcc-libs)/lib"
 
 exec java -jar {{pkg.path}}/jenkins.war 2>&1
