@@ -1,3 +1,15 @@
-[http]
-host = "0.0.0.0"
-port = "8080"
+[jenkins]
+# ref: https://wiki.jenkins-ci.org/display/JENKINS/Starting+and+Accessing+Jenkins
+opts = "-XX:PermSize=512M -XX:MaxPermSize=2048M -Xmn128M -Xms1024M -Xmx2048M"
+httpPort = 8080
+httpListenAddress = "0.0.0.0"
+httpsPort = -1
+httpsListenAddress = "0.0.0.0"
+httpsCertificate = ""
+httpsPrivateKey  = ""
+ajp13Port = 8009
+ajp13ListenAddress = "0.0.0.0"
+
+[java]
+# ref: https://wiki.jenkins-ci.org/display/JENKINS/Features+controlled+by+system+properties
+opts=""
