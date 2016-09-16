@@ -1,11 +1,33 @@
 #!/bin/bash
 
 export JENKINS_HOME="{{pkg.svc_var_path}}"
+echo "JENKINS_HOME=${JENKINS_HOME}"
+
+export JENKINS_OPTS
+JENKINS_OPTS="--httpPort={{cfg.jenkins.httpPort}} "
+JENKINS_OPTS+="--httpListenAddress={{cfg.jenkins.httpListenAddress}} "
+JENKINS_OPTS+="--httpsPort={{cfg.jenkins.httpsPort}} "
+JENKINS_OPTS+="--httpsListenAddress={{cfg.jenkins.httpsListenAddress}} "
+{{#if cfg.jenkins.httpsCertifcate}}
+JENKINS_OPTS+="--httpsCertifcate={{cfg.jenkins.httpsCertifcate}} "
+{{/if}}
+{{#if cfg.jenkins.httpsPrivateKey}}
+JENKINS_OPTS+="--httpsPrivateKey={{cfg.jenkins.httpsPrivateKey}} "
+{{/if}}
+JENKINS_OPTS+="--ajp13Port={{cfg.jenkins.ajp13Port}} "
+JENKINS_OPTS+="--ajp13ListenAddress={{cfg.jenkins.ajp13ListenAddress}} "
+JENKINS_OPTS+="{{cfg.jenkins.opts}}"
+echo "JENKINS_OPTS=${JENKINS_OPTS}"
 
 export JAVA_HOME
 JAVA_HOME="$(hab pkg path core/jdk8)"
+echo "JAVA_HOME=${JAVA_HOME}"
+
+export JAVA_OPTS="{{cfg.java.opts}}"
+echo "JAVA_OPTS=${JAVA_OPTS}"
 
 export LD_LIBRARY_PATH
 LD_LIBRARY_PATH="$(hab pkg path core/gcc-libs)/lib"
+echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
 
-exec java -jar {{pkg.path}}/jenkins.war 2>&1
+exec java {{cfg.java.opts}} -jar {{pkg.path}}/jenkins.war 2>&1
