@@ -1,4 +1,4 @@
-pkg_name=jenkins
+pkg_name=jetty
 pkg_description="The Jetty Web Server provides an HTTP server and Servlet container capable of serving static and dynamic content either from a standalone or embedded instantiations."
 pkg_origin=bdangit
 pkg_version="9.3.11.v20160721"
