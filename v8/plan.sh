@@ -114,6 +114,8 @@ do_build() {
   export CXX
   build_line "Setting CXX=$CXX"
 
+  attach
+
   make PREFIX="$pkg_prefix"
   make
 }

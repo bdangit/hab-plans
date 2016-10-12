@@ -1,6 +1,6 @@
 pkg_origin=bdangit
 pkg_name=couchbase
-pkg_version='4.1.1'
+pkg_version='4.5.0-MP1'
 pkg_description='Couchbase open source edition'
 pkg_maintainer='Ben Dang <me@bdang.it>'
 pkg_license=('couchbase opensource edition')
@@ -17,9 +17,10 @@ pkg_deps=(
   core/openssl
   core/python
   core/snappy
+  bdangit/flatbuffers
 )
 pkg_build_deps=(
-  bdangit/repo
+  core/repo
   core/cacerts
   core/cmake
   core/gcc
@@ -31,28 +32,28 @@ pkg_build_deps=(
 pkg_bin_dirs=(bin)
 
 do_download() {
-  GIT_SSL_CAINFO="$(pkg_path_for core/cacerts)/ssl/certs/cacert.pem"
   export GIT_SSL_CAINFO
+  GIT_SSL_CAINFO="$(pkg_path_for core/cacerts)/ssl/certs/cacert.pem"
   build_line "Setting GIT_SSL_CAINFO=$GIT_SSL_CAINFO"
 
   export SSL_CERT_FILE="$GIT_SSL_CAINFO"
   build_line "Setting SSL_CERT_FILE=$SSL_CERT_FILE"
 
-  PYTHONPATH="$(pkg_path_for core/python)"
   export PYTHONPATH
+  PYTHONPATH="$(pkg_path_for core/python)"
   build_line "Setting PYTHONPATH=$PYTHONPATH"
 
   build_line "Setting up git: username, email and other options"
-  git config --global user.email "humans@habitat.sh"
-  git config --global user.name "hab"
+  git config --global user.email "dev@null.com"
+  git config --global user.name "devnull"
   git config --global color.ui false
   git config --global core.autocrlf true
 
   mkdir -p "$HAB_CACHE_SRC_PATH/$pkg_name-$pkg_version"
-  pushd "$HAB_CACHE_SRC_PATH/$pkg_name-$pkg_version"
+  pushd "$HAB_CACHE_SRC_PATH/$pkg_name-$pkg_version" > /dev/null
   repo init -u "$pkg_source" --manifest-name="released/$pkg_version.xml"
   repo sync
-  popd
+  popd > /dev/null
 }
 
 do_verify() {
@@ -68,13 +69,40 @@ do_unpack() {
 }
 
 do_build() {
-  CC=$(pkg_path_for core/gcc)/bin/gcc
   export CC
+  CC=$(pkg_path_for core/gcc)/bin/gcc
   build_line "Setting CC=$CC"
 
-  CXX=$(pkg_path_for core/gcc)/bin/g++
   export CXX
+  CXX=$(pkg_path_for core/gcc)/bin/g++
   build_line "Setting CXX=$CXX"
 
-  make PREFIX="$pkg_prefix"
+  OPENSSL_DIR=$(pkg_path_for core/openssl)
+
+  LIBEVENT_DIR=$(pkg_path_for core/libevent)
+
+  CURL_DIR=$(pkg_path_for core/curl)
+
+  ICU_DIR=$(pkg_path_for core/icu)
+
+  SNAPPY_DIR=$(pkg_path_for core/snappy)
+
+  FLATBUFFERS_DIR=$(pkg_path_for bdangit/flatbuffers)
+
+  export EXTRA_CMAKE_OPTIONS="-DOPENSSL_LIBRARIES=${OPENSSL_DIR}/lib \
+                              -DOPENSSL_INCLUDE_DIR=${OPENSSL_DIR}/include \
+                              -DLIBEVENT_CORE_LIB=${LIBEVENT_DIR}/lib \
+                              -DLIBEVENT_INCLUDE_DIR=${LIBEVENT_DIR}/include \
+                              -DLIBEVENT_THREAD_LIB=${LIBEVENT_DIR}/lib \
+                              -DLIBEVENT_EXTRA_LIB=${LIBEVENT_DIR}/lib \
+                              -DCURL_LIBRARIES=${CURL_DIR}/lib \
+                              -DCURL_INCLUDE_DIR=${CURL_DIR}/include \
+                              -DICU_LIBRARIES=${ICU_DIR}/lib \
+                              -DICU_INCLUDE_DIR=${ICU_DIR}/include \
+                              -DSNAPPY_LIBRARIES=${SNAPPY_DIR}/lib \
+                              -DSNAPPY_INCLUDE_DIR=${SNAPPY_DIR}/include \
+                              -DFLATC=${FLATBUFFERS_DIR}/bin \
+                              -DFLATBUFFERS_INCLUDE_DIR=${FLATBUFFERS_DIR}/include"
+
+  make PREFIX="$pkg_prefix" EXTRA_CMAKE_OPTIONS="$EXTRA_CMAKE_OPTIONS"
 }
