@@ -1,12 +1,12 @@
 pkg_origin=bdangit
 pkg_name=couchbase
-pkg_version='4.5.0-MP1'
+pkg_version='4.5.1'
 pkg_description='Couchbase open source edition'
 pkg_maintainer='Ben Dang <me@bdang.it>'
 pkg_license=('couchbase opensource edition')
 pkg_upstream_url="http://www.couchbase.com/nosql-databases/downloads"
 pkg_source="https://github.com/couchbase/manifest.git"
-pkg_shasum="no sha"
+pkg_shasum="noshasum"
 pkg_deps=(
   core/curl
   core/erlang
@@ -88,6 +88,8 @@ do_build() {
   SNAPPY_DIR=$(pkg_path_for core/snappy)
 
   FLATBUFFERS_DIR=$(pkg_path_for bdangit/flatbuffers)
+
+  #BREAKPAD_DIR=$(pkg_path_for bdangit/breakpad)
 
   export EXTRA_CMAKE_OPTIONS="-DOPENSSL_LIBRARIES=${OPENSSL_DIR}/lib \
                               -DOPENSSL_INCLUDE_DIR=${OPENSSL_DIR}/include \
