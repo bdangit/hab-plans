@@ -33,3 +33,7 @@ do_build() {
         -DCMAKE_CXX_FLAGS="$CXXFLAGS"
   make
 }
+
+do_check() {
+  ./flattests
+}
