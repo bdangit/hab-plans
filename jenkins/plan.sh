@@ -36,7 +36,6 @@ do_build() {
   mvn clean initialize -pl war -am -DskipTests
 
   build_line "Patching included 'node' binary"
-
   export LD_RUN_PATH
   LD_RUN_PATH="${LD_RUN_PATH}":"$pkg_prefix/lib/amd64/jli":$(pkg_path_for core/gcc-libs)/lib
   patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" \
