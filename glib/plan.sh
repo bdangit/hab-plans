@@ -23,6 +23,7 @@ pkg_build_deps=(
   core/gettext
   core/libffi
   core/libiconv
+  core/pcre
   core/zlib
   core/python2
   core/util-linux
@@ -32,6 +33,12 @@ pkg_lib_dirs=(lib)
 pkg_include_dirs=(include)
 
 do_build() {
+  export PCRE_LIBS
+  PCRE_LIBS="$(pkg_path_for core/pcre)/lib"
+
+  export PKG_CONFIG_PATH
+  PKG_CONFIG_PATH="$PKG_CONFIG_PATH":"$PCRE_LIBS/pkgconfig"
+
   ./configure --prefix="$pkg_prefix"
   make
 }
