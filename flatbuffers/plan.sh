@@ -22,6 +22,8 @@ pkg_build_deps=(
   core/cmake
 )
 pkg_bin_dirs=(bin)
+pkg_lib_dirs=(lib)
+pkg_include_dirs=(include)
 
 do_build() {
   export LD_LIBRARY_PATH
