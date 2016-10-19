@@ -11,28 +11,33 @@ pkg_source="https://chromium.googlesource.com/v8/v8.git"
 pkg_shasum="nosum"
 
 pkg_deps=(
-  core/python2
-  core/coreutils
   core/bash
-  core/glibc
+  core/coreutils
   core/gcc-libs
+  bdangit/glib
+  core/glibc
+  bdangit/pcre
 )
 pkg_build_deps=(
-  core/patchelf
-  core/curl
-  core/make
-  core/openssl
-  core/git
+  core/binutils
   core/cacerts
-  core/subversion
-  core/gcc
+  core/curl
   core/diffutils
+  core/gcc
+  core/git
+  core/make
   core/ninja
+  core/openssl
+  core/patchelf
+  core/python2
+  core/pkg-config
+  core/subversion
+
 )
 pkg_bin_dirs=(bin)
 
 do_download() {
-  # return 0
+  return 0
 
   certs="$(pkg_path_for core/cacerts)/ssl/certs/cacert.pem"
   export GIT_SSL_CAINFO="$certs"
@@ -96,7 +101,7 @@ do_clean() {
 }
 
 do_prepare() {
-  # return 0
+  return 0
 
   build_line "Checkout 'tags/$pkg_version'"
   git checkout "tags/$pkg_version"
@@ -117,10 +122,6 @@ do_prepare() {
   fix_interpreter_in_path "gypfiles" core/coreutils bin/env
 
   build_line "Patching included binaries in v8"
-  binaries=(
-    './buildtools/linux64/gn'
-    './buildtools/linux64/clang-format'
-  )
   export LD_RUN_PATH
   LD_RUN_PATH="${LD_RUN_PATH}:$(pkg_path_for core/gcc-libs)/lib"
   for binary in gn clang-format;
@@ -141,11 +142,31 @@ do_build() {
   build_line "Setting CXX=$CXX"
 
   export LD_LIBRARY_PATH
-  LD_LIBRARY_PATH="$(pkg_path_for gcc)/lib"
+  LD_LIBRARY_PATH="$(pkg_path_for core/gcc)/lib"
   build_line "Setting LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 
-  tools/dev/v8gen.py -vv x64.release -- linux_use_bundled_binutils=false
-  ninja -C out/gn.x64.release
+  export PYTHONPATH
+  PYTHONPATH="$(pkg_path_for core/python2)"
+  build_line "Setting PYTHONPATH=$PYTHONPATH"
+
+  export PKG_CONFIG_PATH
+  PKG_CONFIG_PATH="$(pkg_path_for bdangit/glib)/lib/pkgconfig:$PKG_CONFIG_PATH"
+  PKG_CONFIG_PATH="$(pkg_path_for bdangit/pcre)/lib/pkgconfig:$PKG_CONFIG_PATH"
+  build_line "Setting PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+
+  attach
+  ./buildtools/linux64/gn gen out.gn/x64.release \
+    --fail-on-unused-args \
+    --args="is_debug=false \
+            target_cpu=\"x64\" \
+            is_clang=false \
+            use_gold=false \
+            use_sysroot=false \
+            is_component_build=true \
+            linux_use_bundled_binutils=false \
+            binutils_path=\"$(pkg_path_for core/binutils)/bin\""
+
+  ninja -C out.gn/x64.release
 }
 
 do_install() {
