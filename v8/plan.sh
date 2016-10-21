@@ -5,8 +5,6 @@ pkg_description=""
 pkg_upstream_url="https://github.com/v8/v8"
 pkg_license=('Apache 2.0')
 pkg_maintainer='Ben Dang <me@bdang.it>'
-# pkg_source="https://github.com/$pkg_name/$pkg_name/archive/$pkg_version.tar.gz"
-# pkg_shasum="05cce97d83e35852fe31491df3c4f286e47984bb7445bd4ea1e243de93da8889"
 pkg_source="https://chromium.googlesource.com/v8/v8.git"
 pkg_shasum="nosum"
 
@@ -17,12 +15,12 @@ pkg_deps=(
   bdangit/glib
   core/glibc
   bdangit/pcre
+  core/icu
 )
 pkg_build_deps=(
   core/binutils
   core/cacerts
   core/curl
-  core/diffutils
   core/gcc
   core/git
   core/make
@@ -31,10 +29,14 @@ pkg_build_deps=(
   core/patchelf
   core/python2
   core/pkg-config
-  core/subversion
-
+  core/vim
 )
+
 pkg_bin_dirs=(bin)
+pkg_lib_dirs=(lib)
+pkg_include_dirs=(include)
+
+V8_OUTPUTDIR=out.gn/x64.release
 
 do_download() {
   return 0
@@ -141,9 +143,9 @@ do_build() {
   export CXX
   build_line "Setting CXX=$CXX"
 
-  export LD_LIBRARY_PATH
-  LD_LIBRARY_PATH="$(pkg_path_for core/gcc)/lib"
-  build_line "Setting LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+  LDFLAGS="$LDFLAGS -rpath $PREFIX"
+  export LDFLAGS
+  build_line "Setting LDFLAGS=$LDFLAGS"
 
   export PYTHONPATH
   PYTHONPATH="$(pkg_path_for core/python2)"
@@ -152,25 +154,54 @@ do_build() {
   export PKG_CONFIG_PATH
   PKG_CONFIG_PATH="$(pkg_path_for bdangit/glib)/lib/pkgconfig:$PKG_CONFIG_PATH"
   PKG_CONFIG_PATH="$(pkg_path_for bdangit/pcre)/lib/pkgconfig:$PKG_CONFIG_PATH"
+  PKG_CONFIG_PATH="$(pkg_path_for core/icu)/lib/pkgconfig:$PKG_CONFIG_PATH"
   build_line "Setting PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 
-  attach
-  ./buildtools/linux64/gn gen out.gn/x64.release \
-    --fail-on-unused-args \
-    --args="is_debug=false \
-            target_cpu=\"x64\" \
-            is_clang=false \
-            use_gold=false \
-            use_sysroot=false \
-            is_component_build=true \
-            linux_use_bundled_binutils=false \
-            binutils_path=\"$(pkg_path_for core/binutils)/bin\""
+  ./buildtools/linux64/gn gen "$V8_OUTPUTDIR" \
+                          -v \
+                          --fail-on-unused-args \
+                          --args="binutils_path=\"$(pkg_path_for core/binutils)/bin\" \
+                                  icu_use_data_file=false \
+                                  is_debug=false \
+                                  is_clang=false \
+                                  is_component_build=true \
+                                  linux_use_bundled_binutils=false \
+                                  optimize_for_size=true \
+                                  target_cpu=\"x64\" \
+                                  use_gold=false \
+                                  use_sysroot=false \
+                                  v8_enable_i18n_support=true"
 
-  ninja -C out.gn/x64.release
+  ninja -C "$V8_OUTPUTDIR"
+}
+
+do_check() {
+  attach
+
+  # temporarily set this for testing
+  export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$V8_OUTPUTDIR"
+  tools/run-tests.py --no-presubmit \
+                     --outdir "$V8_OUTPUTDIR"
 }
 
 do_install() {
   attach
+
+  mkdir -p "$pkg_prefix/bin"
+  mkdir -p "$pkg_prefix/lib"
+  mkdir -p "$pkg_prefix/include"
+
+  install -Dm755 "$V8_OUTPUTDIR/d8" "$pkg_prefix/bin"
+  install -Dm644 "$V8_OUTPUTDIR/natives_blob.bin" "$pkg_prefix/bin"
+  install -Dm644 "$V8_OUTPUTDIR/snapshot_blob.bin" "$pkg_prefix/bin"
+
+  install -Dm755 "$V8_OUTPUTDIR/libv8_libbase.so" "$pkg_prefix/lib"
+  install -Dm755 "$V8_OUTPUTDIR/libv8_libplatform.so" "$pkg_prefix/lib"
+  install -Dm755 "$V8_OUTPUTDIR/libv8.so" "$pkg_prefix/lib"
+
+  install -Dm644 include/*.h "$pkg_prefix/include"
+
+  install -m644 LICENSE* "$pkg_prefix"
 }
 
 fix_interpreter_in_path() {
