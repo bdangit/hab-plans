@@ -1,6 +1,7 @@
 pkg_origin=bdangit
 pkg_name=v8
-pkg_version='5.6.39'
+pkg_version='5.6.134'
+# pkg_version='5.6.39'
 pkg_description=""
 pkg_upstream_url="https://github.com/v8/v8"
 pkg_license=('Apache 2.0')
@@ -15,7 +16,6 @@ pkg_deps=(
   bdangit/glib
   core/glibc
   bdangit/pcre
-  core/icu
 )
 pkg_build_deps=(
   core/binutils
@@ -39,7 +39,7 @@ pkg_include_dirs=(include)
 V8_OUTPUTDIR=out.gn/x64.release
 
 do_download() {
-  return 0
+  # return 0
 
   certs="$(pkg_path_for core/cacerts)/ssl/certs/cacert.pem"
   export GIT_SSL_CAINFO="$certs"
@@ -103,7 +103,7 @@ do_clean() {
 }
 
 do_prepare() {
-  return 0
+  # return 0
 
   build_line "Checkout 'tags/$pkg_version'"
   git checkout "tags/$pkg_version"
@@ -135,6 +135,8 @@ do_prepare() {
 }
 
 do_build() {
+  # return 0
+
   CC=$(pkg_path_for core/gcc)/bin/gcc
   export CC
   build_line "Setting CC=$CC"
@@ -143,9 +145,9 @@ do_build() {
   export CXX
   build_line "Setting CXX=$CXX"
 
-  LDFLAGS="$LDFLAGS -rpath $PREFIX"
-  export LDFLAGS
-  build_line "Setting LDFLAGS=$LDFLAGS"
+  LD_RUN_PATH="$LD_RUN_PATH:$PREFIX/lib"
+  export LD_RUN_PATH
+  build_line "Setting LD_RUN_PATH=$LD_RUN_PATH"
 
   export PYTHONPATH
   PYTHONPATH="$(pkg_path_for core/python2)"
@@ -154,7 +156,7 @@ do_build() {
   export PKG_CONFIG_PATH
   PKG_CONFIG_PATH="$(pkg_path_for bdangit/glib)/lib/pkgconfig:$PKG_CONFIG_PATH"
   PKG_CONFIG_PATH="$(pkg_path_for bdangit/pcre)/lib/pkgconfig:$PKG_CONFIG_PATH"
-  PKG_CONFIG_PATH="$(pkg_path_for core/icu)/lib/pkgconfig:$PKG_CONFIG_PATH"
+  # PKG_CONFIG_PATH="$(pkg_path_for core/icu)/lib/pkgconfig:$PKG_CONFIG_PATH"
   build_line "Setting PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 
   ./buildtools/linux64/gn gen "$V8_OUTPUTDIR" \
@@ -176,10 +178,9 @@ do_build() {
 }
 
 do_check() {
-  attach
-
   # temporarily set this for testing
   export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$V8_OUTPUTDIR"
+
   tools/run-tests.py --no-presubmit \
                      --outdir "$V8_OUTPUTDIR"
 }
