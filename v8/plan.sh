@@ -1,10 +1,9 @@
 pkg_origin=bdangit
 pkg_name=v8
 pkg_version='5.6.134'
-# pkg_version='5.6.39'
 pkg_description=""
 pkg_upstream_url="https://github.com/v8/v8"
-pkg_license=('Apache 2.0')
+pkg_license=('Apache-2.0')
 pkg_maintainer='Ben Dang <me@bdang.it>'
 pkg_source="https://chromium.googlesource.com/v8/v8.git"
 pkg_shasum="nosum"
@@ -13,18 +12,19 @@ pkg_deps=(
   core/bash
   core/coreutils
   core/gcc-libs
-  bdangit/glib
   core/glibc
-  bdangit/pcre
+  core/icu
 )
+
 pkg_build_deps=(
+  bdangit/glib
+  bdangit/pcre
   core/binutils
   core/cacerts
   core/curl
   core/gcc
   core/git
   core/make
-  core/ninja
   core/openssl
   core/patchelf
   core/python2
@@ -39,18 +39,9 @@ pkg_include_dirs=(include)
 V8_OUTPUTDIR=out.gn/x64.release
 
 do_download() {
-  # return 0
-
   certs="$(pkg_path_for core/cacerts)/ssl/certs/cacert.pem"
   export GIT_SSL_CAINFO="$certs"
   export SSL_CERT_FILE="$certs"
-
-  if [[ -d "$HAB_CACHE_SRC_PATH/$pkg_filename" || -d "$HAB_CACHE_SRC_PATH/$pkg_name" ]]; then
-    build_line "Found previous v8 and will destroy it."
-    rm -rf "${HAB_CACHE_SRC_PATH:?}/$pkg_name"
-    rm -rf "${HAB_CACHE_SRC_PATH:?}/$pkg_filename"
-    rm -rf "${HAB_CACHE_SRC_PATH:?}/.gclient"
-  fi
 
   build_line "Setting up git: username, email and other options"
   git config --global user.email "dev@null.sh"
@@ -62,30 +53,27 @@ do_download() {
   build_line "Setting up build environment for processing v8 hooks"
   _build_environment
 
+  build_line "Setting up Google's Depot Tools"
+  _setup_depot_tools
+
   pushd "$HAB_CACHE_SRC_PATH" > /dev/null
 
-  build_line "Setting up Google's Depot Tools"
-  depot_tools_path=$(pwd)/depot_tools
-  export PATH="$depot_tools_path":"$PATH"
+  if [[ -d "$HAB_CACHE_SRC_PATH/$pkg_dirname/.git" ]]; then
+    build_line "Found previous v8, attempting to re-use it"
+    pushd "$pkg_dirname" > /dev/null
 
-  if [[ -d "depot_tools" ]]; then
-    build_line "Found previous depot_tools and will destroy it."
-    rm -rf "$depot_tools_path"
+    build_line "Make sure v8 is in sync"
+    git pull origin
+    gclient sync
+
+    popd > /dev/null
+  else
+    build_line "Fetching v8 ... this could take awhile"
+    fetch v8
+
+    rm -rf "${HAB_CACHE_SRC_PATH:?}/$pkg_dirname"
+    mv "$HAB_CACHE_SRC_PATH/v8" "$HAB_CACHE_SRC_PATH/$pkg_dirname"
   fi
-  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-  rm -rf "$depot_tools_path"/.git
-
-  build_line "Fix interpreter for 'bin/env' in depot_tools"
-  fix_interpreter_in_path "$depot_tools_path" core/coreutils bin/env
-
-  build_line "Enable verbose mode for gclient"
-  sed -i 's/gclient\.py" "\$@"/gclient\.py" "\$@" "--verbose"/' "$depot_tools_path/gclient"
-
-  build_line "Fetching v8 ... this could take awhile"
-  fetch v8
-
-  rm -rf "${HAB_CACHE_SRC_PATH:?}/$pkg_dirname"
-  mv "$HAB_CACHE_SRC_PATH/v8" "$HAB_CACHE_SRC_PATH/$pkg_dirname"
 
   popd > /dev/null
 }
@@ -103,40 +91,33 @@ do_clean() {
 }
 
 do_prepare() {
-  # return 0
-
   build_line "Checkout 'tags/$pkg_version'"
   git checkout "tags/$pkg_version"
 
   build_line "Fix interpreter for 'bin/env' in v8/build"
-  fix_interpreter_in_path "build" core/coreutils bin/env
+  _fix_interpreter_in_path "build" core/coreutils bin/env
 
   build_line "Fix interpreter for 'bin/sh' in v8/build"
-  fix_interpreter_in_path "build" core/bash bin/sh
+  _fix_interpreter_in_path "build" core/bash bin/sh
 
   build_line "Fix interpreter for 'bin/env' in v8/tools"
-  fix_interpreter_in_path "tools" core/coreutils bin/env
+  _fix_interpreter_in_path "tools" core/coreutils bin/env
 
   build_line "Fix interpreter for 'bin/sh' in v8/tools"
-  fix_interpreter_in_path "tools" core/bash bin/sh
+  _fix_interpreter_in_path "tools" core/bash bin/sh
 
   build_line "Fix interpreter for 'bin/sh' in v8/gypfiles"
-  fix_interpreter_in_path "gypfiles" core/coreutils bin/env
+  _fix_interpreter_in_path "gypfiles" core/coreutils bin/env
 
   build_line "Patching included binaries in v8"
-  export LD_RUN_PATH
-  LD_RUN_PATH="${LD_RUN_PATH}:$(pkg_path_for core/gcc-libs)/lib"
-  for binary in gn clang-format;
-  do
-    patchelf --interpreter "$(pkg_path_for core/glibc)/lib/ld-linux-x86-64.so.2" \
-             --set-rpath "${LD_RUN_PATH}" \
-             "./buildtools/linux64/$binary"
-  done
+  binaries=(
+    './buildtools/linux64/gn'
+    './buildtools/linux64/clang-format'
+  )
+  _patchelf_binaries "${binaries[@]}"
 }
 
 do_build() {
-  # return 0
-
   CC=$(pkg_path_for core/gcc)/bin/gcc
   export CC
   build_line "Setting CC=$CC"
@@ -144,10 +125,6 @@ do_build() {
   CXX=$(pkg_path_for core/gcc)/bin/g++
   export CXX
   build_line "Setting CXX=$CXX"
-
-  LD_RUN_PATH="$LD_RUN_PATH:$PREFIX/lib"
-  export LD_RUN_PATH
-  build_line "Setting LD_RUN_PATH=$LD_RUN_PATH"
 
   export PYTHONPATH
   PYTHONPATH="$(pkg_path_for core/python2)"
@@ -159,8 +136,11 @@ do_build() {
   # PKG_CONFIG_PATH="$(pkg_path_for core/icu)/lib/pkgconfig:$PKG_CONFIG_PATH"
   build_line "Setting PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 
+  attach
+
   ./buildtools/linux64/gn gen "$V8_OUTPUTDIR" \
                           -v \
+                          --complete_static_lib=true \
                           --fail-on-unused-args \
                           --args="binutils_path=\"$(pkg_path_for core/binutils)/bin\" \
                                   icu_use_data_file=false \
@@ -174,20 +154,20 @@ do_build() {
                                   use_sysroot=false \
                                   v8_enable_i18n_support=true"
 
-  ninja -C "$V8_OUTPUTDIR"
+  $HAB_CACHE_SRC_PATH/depot_tools/ninja -C "$V8_OUTPUTDIR"
 }
 
 do_check() {
   # temporarily set this for testing
   export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$V8_OUTPUTDIR"
 
+  # This will currently fail for 4 tests
+  # ref: https://github.com/bdangit/hab-plans/issues/6
   tools/run-tests.py --no-presubmit \
                      --outdir "$V8_OUTPUTDIR"
 }
 
 do_install() {
-  attach
-
   mkdir -p "$pkg_prefix/bin"
   mkdir -p "$pkg_prefix/lib"
   mkdir -p "$pkg_prefix/include"
@@ -205,7 +185,9 @@ do_install() {
   install -m644 LICENSE* "$pkg_prefix"
 }
 
-fix_interpreter_in_path() {
+# private #
+
+_fix_interpreter_in_path() {
   local path=$1
   local pkg=$2
   local int=$3
@@ -219,4 +201,43 @@ fix_interpreter_in_path() {
     fix_interpreter "$line" "$pkg" "$int"
   done
   rm -rf /tmp/fix_interpreter_in_path_list
+}
+
+_patchelf_binaries() {
+  local binaries=("$@")
+  for binary in "${binaries[@]}";
+  do
+    patchelf --interpreter "$(pkg_path_for core/glibc)/lib/ld-linux-x86-64.so.2" \
+             --set-rpath "$LD_RUN_PATH" \
+             "$binary"
+  done
+}
+
+_setup_depot_tools() {
+  pushd "$HAB_CACHE_SRC_PATH" > /dev/null
+
+  depot_tools_path=$(pwd)/depot_tools
+  export PATH="$depot_tools_path":"$PATH"
+
+  if [[ -d "depot_tools" ]]; then
+    build_line "Found previous depot_tools and will destroy it."
+    rm -rf "$depot_tools_path"
+  fi
+  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+  rm -rf "$depot_tools_path"/.git
+
+  build_line "Fix interpreter for 'bin/env' in depot_tools"
+  _fix_interpreter_in_path "$depot_tools_path" core/coreutils bin/env
+
+  build_line "Patching included binaries in depot_tools"
+  binaries=(
+    "$HAB_CACHE_SRC_PATH/depot_tools/ninja-linux64"
+  )
+  _patchelf_binaries "${binaries[@]}"
+
+  build_line "Enable verbose mode for gclient"
+  sed -i 's/gclient\.py" "\$@"/gclient\.py" "\$@" "--verbose"/' \
+      "$depot_tools_path/gclient"
+
+  popd > /dev/null
 }
