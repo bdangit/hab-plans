@@ -14,10 +14,12 @@ pkg_deps=(
   core/icu
   core/libevent
   core/ncurses
-  core/openssl
+  core/openssl/1.0.2j/20160926152543
   core/python
   core/snappy
   bdangit/flatbuffers
+  bdangit/v8
+  # core/zlib/1.2.8/20161015000012
 )
 pkg_build_deps=(
   core/repo
@@ -89,6 +91,8 @@ do_build() {
 
   FLATBUFFERS_DIR=$(pkg_path_for bdangit/flatbuffers)
 
+  V8_DIR=$(pkg_path_for bdangit/v8)
+
   #BREAKPAD_DIR=$(pkg_path_for bdangit/breakpad)
 
   export EXTRA_CMAKE_OPTIONS="-DOPENSSL_LIBRARIES=${OPENSSL_DIR}/lib \
@@ -104,7 +108,9 @@ do_build() {
                               -DSNAPPY_LIBRARIES=${SNAPPY_DIR}/lib \
                               -DSNAPPY_INCLUDE_DIR=${SNAPPY_DIR}/include \
                               -DFLATC=${FLATBUFFERS_DIR}/bin \
-                              -DFLATBUFFERS_INCLUDE_DIR=${FLATBUFFERS_DIR}/include"
+                              -DFLATBUFFERS_INCLUDE_DIR=${FLATBUFFERS_DIR}/include \
+                              -DV8_LIBRARIES=${V8_DIR}/lib \
+                              -DV8_INCLUDE_DIR=${V8_DIR}/include"
 
   make PREFIX="$pkg_prefix" EXTRA_CMAKE_OPTIONS="$EXTRA_CMAKE_OPTIONS"
 }
