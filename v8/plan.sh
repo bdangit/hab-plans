@@ -9,7 +9,6 @@ pkg_source="https://chromium.googlesource.com/v8/v8.git"
 pkg_shasum="nosum"
 
 pkg_deps=(
-  core/bash
   core/coreutils
   core/gcc-libs
   core/glibc
@@ -60,19 +59,24 @@ do_download() {
 
   if [[ -d "$HAB_CACHE_SRC_PATH/$pkg_dirname/.git" ]]; then
     build_line "Found previous v8, attempting to re-use it"
-    pushd "$pkg_dirname" > /dev/null
 
-    build_line "Make sure v8 is in sync"
-    git pull origin
+    build_line "Uncheckout any modified files ..."
+    for p in "." "build" "buildtools" "tools" "tools/clang" "tools/gyp" "tools/swarming_client";
+    do
+      pushd "$pkg_dirname/$p" > /dev/null
+      git checkout .
+      popd > /dev/null
+    done
+
+    build_line "Make sure v8 is in sync ..."
     gclient sync
-
-    popd > /dev/null
   else
     build_line "Fetching v8 ... this could take awhile"
     fetch v8
 
     rm -rf "${HAB_CACHE_SRC_PATH:?}/$pkg_dirname"
     mv "$HAB_CACHE_SRC_PATH/v8" "$HAB_CACHE_SRC_PATH/$pkg_dirname"
+    ln -s "$HAB_CACHE_SRC_PATH/$pkg_dirname" "$HAB_CACHE_SRC_PATH/v8"
   fi
 
   popd > /dev/null
@@ -94,20 +98,20 @@ do_prepare() {
   build_line "Checkout 'tags/$pkg_version'"
   git checkout "tags/$pkg_version"
 
-  build_line "Fix interpreter for 'bin/env' in v8/build"
-  _fix_interpreter_in_path "build" core/coreutils bin/env
-
-  build_line "Fix interpreter for 'bin/sh' in v8/build"
-  _fix_interpreter_in_path "build" core/bash bin/sh
-
-  build_line "Fix interpreter for 'bin/env' in v8/tools"
-  _fix_interpreter_in_path "tools" core/coreutils bin/env
-
-  build_line "Fix interpreter for 'bin/sh' in v8/tools"
-  _fix_interpreter_in_path "tools" core/bash bin/sh
-
-  build_line "Fix interpreter for 'bin/sh' in v8/gypfiles"
-  _fix_interpreter_in_path "gypfiles" core/coreutils bin/env
+  # build_line "Fix interpreter for 'bin/env' in v8/build"
+  # _fix_interpreter_in_path "build" core/coreutils bin/env
+  #
+  # build_line "Fix interpreter for 'bin/sh' in v8/build"
+  # _fix_interpreter_in_path "build" core/bash bin/sh
+  #
+  # build_line "Fix interpreter for 'bin/env' in v8/tools"
+  # _fix_interpreter_in_path "tools" core/coreutils bin/env
+  #
+  # build_line "Fix interpreter for 'bin/sh' in v8/tools"
+  # _fix_interpreter_in_path "tools" core/bash bin/sh
+  #
+  # build_line "Fix interpreter for 'bin/sh' in v8/gypfiles"
+  # _fix_interpreter_in_path "gypfiles" core/coreutils bin/env
 
   build_line "Patching included binaries in v8"
   binaries=(
@@ -118,12 +122,12 @@ do_prepare() {
 }
 
 do_build() {
-  CC=$(pkg_path_for core/gcc)/bin/gcc
   export CC
+  CC=$(pkg_path_for core/gcc)/bin/gcc
   build_line "Setting CC=$CC"
 
-  CXX=$(pkg_path_for core/gcc)/bin/g++
   export CXX
+  CXX=$(pkg_path_for core/gcc)/bin/g++
   build_line "Setting CXX=$CXX"
 
   export PYTHONPATH
@@ -133,27 +137,26 @@ do_build() {
   export PKG_CONFIG_PATH
   PKG_CONFIG_PATH="$(pkg_path_for bdangit/glib)/lib/pkgconfig:$PKG_CONFIG_PATH"
   PKG_CONFIG_PATH="$(pkg_path_for bdangit/pcre)/lib/pkgconfig:$PKG_CONFIG_PATH"
-  # PKG_CONFIG_PATH="$(pkg_path_for core/icu)/lib/pkgconfig:$PKG_CONFIG_PATH"
   build_line "Setting PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 
-  attach
+  # attach
 
+  ./buildtools/linux64/gn clean "$V8_OUTPUTDIR"
   ./buildtools/linux64/gn gen "$V8_OUTPUTDIR" \
                           -v \
-                          --complete_static_lib=true \
+                          --complete_static_lib=1 \
                           --fail-on-unused-args \
                           --args="binutils_path=\"$(pkg_path_for core/binutils)/bin\" \
                                   icu_use_data_file=false \
                                   is_debug=false \
                                   is_clang=false \
-                                  is_component_build=true \
+                                  is_component_build=tru \
                                   linux_use_bundled_binutils=false \
                                   optimize_for_size=true \
                                   target_cpu=\"x64\" \
                                   use_gold=false \
                                   use_sysroot=false \
                                   v8_enable_i18n_support=true"
-
   $HAB_CACHE_SRC_PATH/depot_tools/ninja -C "$V8_OUTPUTDIR"
 }
 
@@ -220,8 +223,8 @@ _setup_depot_tools() {
   export PATH="$depot_tools_path":"$PATH"
 
   if [[ -d "depot_tools" ]]; then
-    build_line "Found previous depot_tools and will destroy it."
-    rm -rf "$depot_tools_path"
+    build_line "Found previous depot_tools, attempting to re-use it."
+    return 0
   fi
   git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
   rm -rf "$depot_tools_path"/.git
