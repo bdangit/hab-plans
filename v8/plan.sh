@@ -16,16 +16,16 @@ pkg_deps=(
 )
 
 pkg_build_deps=(
-  bdangit/glib
-  bdangit/pcre
   core/binutils
   core/cacerts
   core/curl
   core/gcc
   core/git
+  core/glib
   core/make
   core/openssl
   core/patchelf
+  core/pcre
   core/python2
   core/pkg-config
   core/vim
@@ -98,21 +98,6 @@ do_prepare() {
   build_line "Checkout 'tags/$pkg_version'"
   git checkout "tags/$pkg_version"
 
-  # build_line "Fix interpreter for 'bin/env' in v8/build"
-  # _fix_interpreter_in_path "build" core/coreutils bin/env
-  #
-  # build_line "Fix interpreter for 'bin/sh' in v8/build"
-  # _fix_interpreter_in_path "build" core/bash bin/sh
-  #
-  # build_line "Fix interpreter for 'bin/env' in v8/tools"
-  # _fix_interpreter_in_path "tools" core/coreutils bin/env
-  #
-  # build_line "Fix interpreter for 'bin/sh' in v8/tools"
-  # _fix_interpreter_in_path "tools" core/bash bin/sh
-  #
-  # build_line "Fix interpreter for 'bin/sh' in v8/gypfiles"
-  # _fix_interpreter_in_path "gypfiles" core/coreutils bin/env
-
   build_line "Patching included binaries in v8"
   binaries=(
     './buildtools/linux64/gn'
@@ -134,29 +119,26 @@ do_build() {
   PYTHONPATH="$(pkg_path_for core/python2)"
   build_line "Setting PYTHONPATH=$PYTHONPATH"
 
-  export PKG_CONFIG_PATH
-  PKG_CONFIG_PATH="$(pkg_path_for bdangit/glib)/lib/pkgconfig:$PKG_CONFIG_PATH"
-  PKG_CONFIG_PATH="$(pkg_path_for bdangit/pcre)/lib/pkgconfig:$PKG_CONFIG_PATH"
-  build_line "Setting PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+  if [[ -d "$V8_OUTPUTDIR" ]]; then
+    ./buildtools/linux64/gn clean "$V8_OUTPUTDIR"
+  fi
 
-  # attach
-
-  ./buildtools/linux64/gn clean "$V8_OUTPUTDIR"
   ./buildtools/linux64/gn gen "$V8_OUTPUTDIR" \
-                          -v \
-                          --complete_static_lib=1 \
                           --fail-on-unused-args \
                           --args="binutils_path=\"$(pkg_path_for core/binutils)/bin\" \
                                   icu_use_data_file=false \
                                   is_debug=false \
                                   is_clang=false \
-                                  is_component_build=tru \
+                                  is_component_build=true \
                                   linux_use_bundled_binutils=false \
-                                  optimize_for_size=true \
                                   target_cpu=\"x64\" \
                                   use_gold=false \
                                   use_sysroot=false \
-                                  v8_enable_i18n_support=true"
+                                  v8_enable_backtrace=true \
+                                  v8_use_external_startup_data=true"
+
+                                  # optimize_for_size=true \
+
   $HAB_CACHE_SRC_PATH/depot_tools/ninja -C "$V8_OUTPUTDIR"
 }
 
@@ -173,7 +155,7 @@ do_check() {
 do_install() {
   mkdir -p "$pkg_prefix/bin"
   mkdir -p "$pkg_prefix/lib"
-  mkdir -p "$pkg_prefix/include"
+  mkdir -p "$pkg_prefix/include/libplatform"
 
   install -Dm755 "$V8_OUTPUTDIR/d8" "$pkg_prefix/bin"
   install -Dm644 "$V8_OUTPUTDIR/natives_blob.bin" "$pkg_prefix/bin"
@@ -184,7 +166,7 @@ do_install() {
   install -Dm755 "$V8_OUTPUTDIR/libv8.so" "$pkg_prefix/lib"
 
   install -Dm644 include/*.h "$pkg_prefix/include"
-
+  install -Dm644 include/libplatform/*.h "$pkg_prefix/include/libplatform"
   install -m644 LICENSE* "$pkg_prefix"
 }
 
