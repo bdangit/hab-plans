@@ -20,7 +20,7 @@ pkg_build_deps=(
   core/erlang
   core/flatbuffers
   core/ncurses
-  core/python
+  core/python2
   core/curl
   core/repo
   core/cacerts
@@ -30,12 +30,13 @@ pkg_build_deps=(
   core/gnupg
   core/make
   core/patchelf
+  core/vim
 )
 pkg_bin_dirs=(bin)
 
 do_download() {
   export PYTHONPATH
-  PYTHONPATH="$(pkg_path_for core/python)"
+  PYTHONPATH="$(pkg_path_for core/python2)"
   build_line "Setting PYTHONPATH=$PYTHONPATH"
 
   certs="$(pkg_path_for core/cacerts)/ssl/certs/cacert.pem"
@@ -74,7 +75,7 @@ do_unpack() {
 }
 
 do_build() {
-  export LD_LIBRARY_PATH="$LD_RUN_PATH"
+  export LD_LIBRARY_PATH="$pkg_prefix/lib:$LD_RUN_PATH"
   build_line "Setting LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 
   export CC
@@ -93,12 +94,10 @@ do_build() {
   SNAPPY_DIR=$(pkg_path_for core/snappy)
   FLATBUFFERS_DIR=$(pkg_path_for core/flatbuffers)
   V8_DIR=$(pkg_path_for bdangit/v8)
-  #BREAKPAD_DIR=$(pkg_path_for bdangit/breakpad)
 
   export EXTRA_CMAKE_OPTIONS="\
     -DCMAKE_VERBOSE_MAKEFILE=ON \
     -DCMAKE_INSTALL_PREFIX=$pkg_prefix \
-    -DCMAKE_SKIP_INSTALL_RPATH=YES \
     -DDL_LIBRARY=${GLIBC_DIR}/lib/libdl.so \
     -DOPENSSL_SSL_LIBRARY=${OPENSSL_DIR}/lib/libssl.so \
     -DOPENSSL_CRYPT_LIBRARY=${OPENSSL_DIR}/lib/libcrypto.so \
@@ -120,12 +119,35 @@ do_build() {
     -DV8_PLATFORMLIB=${V8_DIR}/lib/libv8_libplatform.so \
     -DV8_BASELIB=${V8_DIR}/lib/libv8_libbase.so"
 
-# # attach
-
   make clean
 
-  attach
+  build_line "Fixing some CMakelists.txt -- make sure to link full paths to libraries"
+  fix_list=(
+    .
+    couchbase-cli
+    couchbase-examples
+    couchdb
+    couchstore
+    ep-engine
+    forestdb
+    geocouch
+    googletest
+    memcached
+    moxi
+    ns_server
+    platform
+    query-ui
+    sigar
+    subjson
+    tlm
+  )
+  for f in "${fix_list[@]}";
+  do
+    build_line "...$f/CMakeLists.txt"
+    sed -i '/CMAKE_MINIMUM_REQUIRED(VERSION 2.*)/a CMAKE_POLICY(SET CMP0060 NEW)' "$f/CMakeLists.txt"
+  done
 
+  attach
   make PREFIX="$pkg_prefix" \
        EXTRA_CMAKE_OPTIONS="$EXTRA_CMAKE_OPTIONS" \
        PRODUCT_VERSION="$pkg_version"
