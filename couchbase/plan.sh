@@ -1,12 +1,22 @@
-pkg_origin=bdangit
 pkg_name=couchbase
+pkg_origin=bdangit
 pkg_version='4.5.1'
-pkg_description='Couchbase open source edition'
+pkg_description="$(cat << EOF
+  Couchbase Server is an open source, distributed, NoSQL document-oriented
+  database. It exposes a fast key-value store with managed cache for
+  submillisecond data operations, purpose-built indexers for fast queries and
+  a query engine for executing SQL-like queries. For mobile and Internet of
+  Things environments Couchbase Lite runs natively on-device and manages
+  synchronization to Couchbase Server.
+EOF
+)"
 pkg_maintainer='Ben Dang <me@bdang.it>'
-pkg_license=('couchbase opensource edition')
-pkg_upstream_url="http://www.couchbase.com/nosql-databases/downloads"
+# license ref: http://developer.couchbase.com/open-source-projects
+pkg_license=('Apache-2.0')
+pkg_upstream_url="https://github.com/couchbase/manifest"
 pkg_source="https://github.com/couchbase/manifest.git"
-pkg_shasum="noshasum"
+pkg_shasum="nosum"
+
 pkg_deps=(
   core/glibc
   core/gcc-libs
@@ -58,6 +68,9 @@ do_download() {
 
   build_line "syncing the couchbase repo"
   repo sync
+
+  build_line "making sure its really unmodified"
+  repo forall -vc "git reset --hard"
 
   popd > /dev/null
 }
@@ -144,10 +157,9 @@ do_build() {
   for f in "${fix_list[@]}";
   do
     build_line "...$f/CMakeLists.txt"
-    sed -i '/CMAKE_MINIMUM_REQUIRED(VERSION 2.*)/a CMAKE_POLICY(SET CMP0060 NEW)' "$f/CMakeLists.txt"
+    sed -i '/CMAKE_MINIMUM_REQUIRED\s*(VERSION 2.*)/Ia CMAKE_POLICY(SET CMP0060 NEW)' "$f/CMakeLists.txt"
   done
 
-  attach
   make PREFIX="$pkg_prefix" \
        EXTRA_CMAKE_OPTIONS="$EXTRA_CMAKE_OPTIONS" \
        PRODUCT_VERSION="$pkg_version"
