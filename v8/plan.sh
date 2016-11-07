@@ -1,10 +1,18 @@
-pkg_origin=bdangit
 pkg_name=v8
+pkg_origin=bdangit
 pkg_version='5.6.134'
-pkg_description=""
-pkg_upstream_url="https://github.com/v8/v8"
-pkg_license=('Apache-2.0')
+pkg_description="$(cat << EOF
+  V8 is Google\'s open source high-performance JavaScript engine, written in
+  C++ and used in Google Chrome, the open source browser from Google. It
+  implements ECMAScript as specified in ECMA-262, and runs on Windows 7 or
+  later, Mac OS X 10.5+, and Linux systems that use IA-32, ARM or MIPS
+  processors. V8 can run standalone, or can be embedded into any C++
+  application.
+EOF
+)"
 pkg_maintainer='Ben Dang <me@bdang.it>'
+pkg_license=('Apache-2.0')
+pkg_upstream_url="https://github.com/v8/v8"
 pkg_source="https://chromium.googlesource.com/v8/v8.git"
 pkg_shasum="nosum"
 
@@ -137,8 +145,6 @@ do_build() {
                                   v8_enable_backtrace=true \
                                   v8_use_external_startup_data=true"
 
-                                  # optimize_for_size=true \
-
   $HAB_CACHE_SRC_PATH/depot_tools/ninja -C "$V8_OUTPUTDIR"
 }
 
@@ -171,7 +177,6 @@ do_install() {
 }
 
 # private #
-
 _fix_interpreter_in_path() {
   local path=$1
   local pkg=$2
