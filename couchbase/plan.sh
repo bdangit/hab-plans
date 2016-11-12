@@ -32,6 +32,8 @@ pkg_deps=(
   core/zlib
 )
 pkg_build_deps=(
+  core/findutils
+  core/grep
   core/repo
   core/cacerts
   core/cmake
@@ -42,6 +44,7 @@ pkg_build_deps=(
   core/make
   core/ncurses
   core/patchelf
+  core/sed
   core/vim
 )
 pkg_bin_dirs=(bin)
@@ -60,6 +63,7 @@ do_download() {
   PYTHONPATH="$(pkg_path_for core/python2)"
   build_line "Setting PYTHONPATH=$PYTHONPATH"
 
+  build_line "Setting up certs"
   certs="$(pkg_path_for core/cacerts)/ssl/certs/cacert.pem"
   export GIT_SSL_CAINFO="$certs"
   export SSL_CERT_FILE="$certs"
@@ -74,14 +78,14 @@ do_download() {
   mkdir -p "$HAB_CACHE_SRC_PATH/$pkg_dirname"
   pushd "$HAB_CACHE_SRC_PATH/$pkg_dirname" > /dev/null
 
-  build_line "initializing the couchbase repo"
+  build_line "Initializing the couchbase repo"
   repo init -u "$pkg_source" --manifest-name="released/$pkg_version.xml"
 
-  build_line "syncing the couchbase repo"
+  build_line "Syncing the couchbase repo"
   repo sync
 
-  build_line "making sure its really unmodified"
-  repo forall -vc "git reset --hard"
+  # build_line "Making sure it is really unmodified"
+  # repo forall -vc "git reset --hard"
 
   popd > /dev/null
 }
@@ -99,6 +103,7 @@ do_unpack() {
 }
 
 do_prepare() {
+  build_line "Create link for /lib/ld-linux-x86-64.so.2 to make included 'go' happy"
   pushd "/lib64" > /dev/null
   ln -s "$(hab pkg path core/glibc)/lib/ld-linux-x86-64.so.2"
   popd > /dev/null
@@ -125,9 +130,8 @@ do_build() {
   FLATBUFFERS_DIR=$(pkg_path_for core/flatbuffers)
   V8_DIR=$(pkg_path_for bdangit/v8)
   ZLIB_DIR=$(pkg_path_for core/zlib)
-
   export EXTRA_CMAKE_OPTIONS="\
-    -DCMAKE_VERBOSE_MAKEFILE=ON \
+    -DCMAKE_VERBOSE_MAKEFILE=$DEBUG \
     -DCMAKE_INSTALL_PREFIX=$pkg_prefix \
     -DDL_LIBRARY=${GLIBC_DIR}/lib/libdl.so \
     -DOPENSSL_SSL_LIBRARY=${OPENSSL_DIR}/lib/libssl.so \
@@ -150,46 +154,52 @@ do_build() {
     -DV8_PLATFORMLIB=${V8_DIR}/lib/libv8_libplatform.so \
     -DV8_BASELIB=${V8_DIR}/lib/libv8_libbase.so \
     -DZ_LIBRARIES=${ZLIB_DIR}/lib/libz.so"
+  build_line "Setting EXTRA_CMAKE_OPTIONS=$EXTRA_CMAKE_OPTIONS"
 
-  make clean
+  # make clean
+  #
+  # build_line "Fixing CMakelists.txts to ensure full paths to libraries"
+  # fix_list=(
+  #   .
+  #   couchbase-cli
+  #   couchbase-examples
+  #   couchdb
+  #   couchstore
+  #   ep-engine
+  #   forestdb
+  #   geocouch
+  #   googletest
+  #   memcached
+  #   moxi
+  #   ns_server
+  #   platform
+  #   query-ui
+  #   sigar
+  #   subjson
+  #   tlm
+  # )
+  # for f in "${fix_list[@]}";
+  # do
+  #   debug "...$f/CMakeLists.txt"
+  #   hab pkg exec core/sed sed -i '/CMAKE_MINIMUM_REQUIRED\s*(VERSION 2.*)/Ia CMAKE_POLICY(SET CMP0060 NEW)' "$f/CMakeLists.txt"
+  # done
 
-  build_line "Fixing some CMakelists.txt -- make sure to link full paths to libraries"
-  fix_list=(
-    .
-    couchbase-cli
-    couchbase-examples
-    couchdb
-    couchstore
-    ep-engine
-    forestdb
-    geocouch
-    googletest
-    memcached
-    moxi
-    ns_server
-    platform
-    query-ui
-    sigar
-    subjson
-    tlm
-  )
-  for f in "${fix_list[@]}";
-  do
-    build_line "...$f/CMakeLists.txt"
-    sed -i '/CMAKE_MINIMUM_REQUIRED\s*(VERSION 2.*)/a CMAKE_POLICY(SET CMP0060 NEW)' "$f/CMakeLists.txt"
-  done
-
-  build_line "Fix moxi to get core/zlib"
+  build_line "Fixing 'moxi' to get core/zlib"
   sed -i 's/ZLIB z/ZLIB ${Z_LIBRARIES}/' moxi/CMakeLists.txt
 
+  build_line "Lets build it! This could take awhile."
   make PREFIX="$pkg_prefix" \
        EXTRA_CMAKE_OPTIONS="$EXTRA_CMAKE_OPTIONS" \
        PRODUCT_VERSION="$pkg_version"
 }
 
+do_check() {
+  make test
+}
+
 do_install() {
   # NOTE: CMAKE takes care of installation in the build phase
-  build_line "Fix interpreters"
+  build_line "Fixing interpreters"
   _fix_interpreter_in_path "$pkg_prefix/lib/python" core/busybox bin/env
   _fix_interpreter_in_path "$pkg_prefix/bin" core/busybox bin/bash
   _fix_interpreter_in_path "$pkg_prefix/bin" core/busybox bin/sh
@@ -197,17 +207,18 @@ do_install() {
   _fix_interpreter_in_path "$pkg_prefix/bin" core/python bin/python
   # build_line "Fix bin/couchbase-server ... yes this needs lots of work"
   # #       fix the following files:
-  # #       DEFAULT_CONFIG_DIR=$pkg_svc_config_path/couchdb/default.d
-  # #       DEFAULT_CONFIG_FILE=$pkg_svc_config_path/default.ini
-  # #       LOCAL_CONFIG_DIR=$pkg_svc_config_path/local.d
-  # #       LOCAL_CONFIG_FILE=$pkg_svc_config_path/local.ini
-  # #       PIDFILE
-  # #       COOKIEFILE
-  # #       datadir
-  # #       config_path
+  # #       DEFAULT_CONFIG_DIR=$pkg_svc_var_path/etc/couchdb/default.d
+  # #       DEFAULT_CONFIG_FILE=$pkg_svc_var_path/etc/couchdb/default.ini
+  # #       LOCAL_CONFIG_DIR=$pkg_svc_var_path/etc/couchdb/local.d
+  # #       LOCAL_CONFIG_FILE=$pkg_svc_var_path/etc/couchdb/local.ini
+  # #       PIDFILE=$pkg_svc_var_path/couchbase-server.pid
+  # #       COOKIEFILE=$pkg_svc_var_path/couchbase-server.cookie
+  # #       NODEFILE=$pkg_svc_var_path/couchbase-server.node
+  # #       datadir=$pkg_svc_var_path/data/
+  # #       config_path=$pkg_svc_config_path/etc/couchbase/static_config
+  # #       logs=$pkg_svc_var_path/logs/
   #
   # # configs
-  # # TODO: fix $pkg_prefix/etc/logrotate.d/couchdb by storing into svc dir
   # # TODO: fix $pkg_prefix/etc/couchbase/static_config by storing logs into svc dir
 }
 
@@ -223,7 +234,7 @@ _fix_interpreter_in_path() {
   local pkg=$2
   local int=$3
 
-  find "$path" -type f -executable \
+  hab pkg exec core/findutils find "$path" -type f -executable \
     -exec sh -c 'file -i "$1" | egrep -q "(plain|x-shellscript); charset=us-ascii"' _ {} \; \
     -exec sh -c 'head -n 1 "$1" | grep -q "$int"' _ {} \; \
     -exec sh -c 'echo "$1"' _ {} \; > /tmp/fix_interpreter_in_path_list
