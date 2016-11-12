@@ -84,8 +84,8 @@ do_download() {
   build_line "Syncing the couchbase repo"
   repo sync
 
-  # build_line "Making sure it is really unmodified"
-  # repo forall -vc "git reset --hard"
+  build_line "Making sure it is really unmodified"
+  repo forall -vc "git reset --hard"
 
   popd > /dev/null
 }
@@ -132,7 +132,7 @@ do_build() {
   ZLIB_DIR=$(pkg_path_for core/zlib)
   export EXTRA_CMAKE_OPTIONS="\
     -DCMAKE_VERBOSE_MAKEFILE=$DEBUG \
-    -DCMAKE_INSTALL_PREFIX=$pkg_prefix \
+    -DCMAKE_INSTALL_PREFIX=$PREFIX \
     -DDL_LIBRARY=${GLIBC_DIR}/lib/libdl.so \
     -DOPENSSL_SSL_LIBRARY=${OPENSSL_DIR}/lib/libssl.so \
     -DOPENSSL_CRYPT_LIBRARY=${OPENSSL_DIR}/lib/libcrypto.so \
@@ -156,33 +156,33 @@ do_build() {
     -DZ_LIBRARIES=${ZLIB_DIR}/lib/libz.so"
   build_line "Setting EXTRA_CMAKE_OPTIONS=$EXTRA_CMAKE_OPTIONS"
 
-  # make clean
-  #
-  # build_line "Fixing CMakelists.txts to ensure full paths to libraries"
-  # fix_list=(
-  #   .
-  #   couchbase-cli
-  #   couchbase-examples
-  #   couchdb
-  #   couchstore
-  #   ep-engine
-  #   forestdb
-  #   geocouch
-  #   googletest
-  #   memcached
-  #   moxi
-  #   ns_server
-  #   platform
-  #   query-ui
-  #   sigar
-  #   subjson
-  #   tlm
-  # )
-  # for f in "${fix_list[@]}";
-  # do
-  #   debug "...$f/CMakeLists.txt"
-  #   hab pkg exec core/sed sed -i '/CMAKE_MINIMUM_REQUIRED\s*(VERSION 2.*)/Ia CMAKE_POLICY(SET CMP0060 NEW)' "$f/CMakeLists.txt"
-  # done
+  make clean
+
+  build_line "Fixing CMakelists.txts to ensure full paths to libraries"
+  fix_list=(
+    .
+    couchbase-cli
+    couchbase-examples
+    couchdb
+    couchstore
+    ep-engine
+    forestdb
+    geocouch
+    googletest
+    memcached
+    moxi
+    ns_server
+    platform
+    query-ui
+    sigar
+    subjson
+    tlm
+  )
+  for f in "${fix_list[@]}";
+  do
+    debug "...$f/CMakeLists.txt"
+    hab pkg exec core/sed sed -i '/CMAKE_MINIMUM_REQUIRED\s*(VERSION 2.*)/Ia CMAKE_POLICY(SET CMP0060 NEW)' "$f/CMakeLists.txt"
+  done
 
   build_line "Fixing 'moxi' to get core/zlib"
   sed -i 's/ZLIB z/ZLIB ${Z_LIBRARIES}/' moxi/CMakeLists.txt
@@ -204,7 +204,7 @@ do_install() {
   _fix_interpreter_in_path "$pkg_prefix/bin" core/busybox bin/bash
   _fix_interpreter_in_path "$pkg_prefix/bin" core/busybox bin/sh
   _fix_interpreter_in_path "$pkg_prefix/bin" core/busybox bin/env
-  _fix_interpreter_in_path "$pkg_prefix/bin" core/python bin/python
+  _fix_interpreter_in_path "$pkg_prefix/bin" core/python2 bin/python
   # build_line "Fix bin/couchbase-server ... yes this needs lots of work"
   # #       fix the following files:
   # #       DEFAULT_CONFIG_DIR=$pkg_svc_var_path/etc/couchdb/default.d
@@ -234,10 +234,11 @@ _fix_interpreter_in_path() {
   local pkg=$2
   local int=$3
 
-  hab pkg exec core/findutils find "$path" -type f -executable \
-    -exec sh -c 'file -i "$1" | egrep -q "(plain|x-shellscript); charset=us-ascii"' _ {} \; \
-    -exec sh -c 'head -n 1 "$1" | grep -q "$int"' _ {} \; \
+  find "$path" -type f \
+    -exec grep -Iq . {} \; \
+    -exec sh -c 'head -n 1 "$1" | grep -q "$2"' _ {} "$int" \; \
     -exec sh -c 'echo "$1"' _ {} \; > /tmp/fix_interpreter_in_path_list
+
   grep -v '^ *#' < /tmp/fix_interpreter_in_path_list | while IFS= read -r line
   do
     fix_interpreter "$line" "$pkg" "$int"
