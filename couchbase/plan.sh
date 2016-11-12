@@ -18,31 +18,42 @@ pkg_source="https://github.com/couchbase/manifest.git"
 pkg_shasum="nosum"
 
 pkg_deps=(
+  core/busybox
+  core/curl
+  bdangit/erlang16
   core/glibc
   core/gcc-libs
-  core/icu
+  bdangit/icu56
   core/libevent
   core/openssl
+  core/python2
   core/snappy
   bdangit/v8
+  core/zlib
 )
 pkg_build_deps=(
-  core/erlang
-  core/flatbuffers
-  core/ncurses
-  core/python2
-  core/curl
   core/repo
   core/cacerts
   core/cmake
+  core/flatbuffers
   core/gcc
   core/git
   core/gnupg
   core/make
+  core/ncurses
   core/patchelf
   core/vim
 )
 pkg_bin_dirs=(bin)
+
+do_begin() {
+  if [ -f /lib64/ld-linux-x86-64.so.2 ]
+  then
+    pushd /lib64 > /dev/null
+    unlink ld-linux-x86-64.so.2
+    popd > /dev/null
+  fi
+}
 
 do_download() {
   export PYTHONPATH
@@ -87,6 +98,12 @@ do_unpack() {
   return 0
 }
 
+do_prepare() {
+  pushd "/lib64" > /dev/null
+  ln -s "$(hab pkg path core/glibc)/lib/ld-linux-x86-64.so.2"
+  popd > /dev/null
+}
+
 do_build() {
   export LD_LIBRARY_PATH="$pkg_prefix/lib:$LD_RUN_PATH"
   build_line "Setting LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
@@ -103,10 +120,11 @@ do_build() {
   OPENSSL_DIR=$(pkg_path_for core/openssl)
   LIBEVENT_DIR=$(pkg_path_for core/libevent)
   CURL_DIR=$(pkg_path_for core/curl)
-  ICU_DIR=$(pkg_path_for core/icu)
+  ICU_DIR=$(pkg_path_for bdangit/icu56)
   SNAPPY_DIR=$(pkg_path_for core/snappy)
   FLATBUFFERS_DIR=$(pkg_path_for core/flatbuffers)
   V8_DIR=$(pkg_path_for bdangit/v8)
+  ZLIB_DIR=$(pkg_path_for core/zlib)
 
   export EXTRA_CMAKE_OPTIONS="\
     -DCMAKE_VERBOSE_MAKEFILE=ON \
@@ -130,7 +148,8 @@ do_build() {
     -DV8_INCLUDE_DIR=${V8_DIR} \
     -DV8_SHAREDLIB=${V8_DIR}/lib/libv8.so \
     -DV8_PLATFORMLIB=${V8_DIR}/lib/libv8_libplatform.so \
-    -DV8_BASELIB=${V8_DIR}/lib/libv8_libbase.so"
+    -DV8_BASELIB=${V8_DIR}/lib/libv8_libbase.so \
+    -DZ_LIBRARIES=${ZLIB_DIR}/lib/libz.so"
 
   make clean
 
@@ -157,10 +176,60 @@ do_build() {
   for f in "${fix_list[@]}";
   do
     build_line "...$f/CMakeLists.txt"
-    sed -i '/CMAKE_MINIMUM_REQUIRED\s*(VERSION 2.*)/Ia CMAKE_POLICY(SET CMP0060 NEW)' "$f/CMakeLists.txt"
+    sed -i '/CMAKE_MINIMUM_REQUIRED\s*(VERSION 2.*)/a CMAKE_POLICY(SET CMP0060 NEW)' "$f/CMakeLists.txt"
   done
+
+  build_line "Fix moxi to get core/zlib"
+  sed -i 's/ZLIB z/ZLIB ${Z_LIBRARIES}/' moxi/CMakeLists.txt
 
   make PREFIX="$pkg_prefix" \
        EXTRA_CMAKE_OPTIONS="$EXTRA_CMAKE_OPTIONS" \
        PRODUCT_VERSION="$pkg_version"
+}
+
+do_install() {
+  # NOTE: CMAKE takes care of installation in the build phase
+  build_line "Fix interpreters"
+  _fix_interpreter_in_path "$pkg_prefix/lib/python" core/busybox bin/env
+  _fix_interpreter_in_path "$pkg_prefix/bin" core/busybox bin/bash
+  _fix_interpreter_in_path "$pkg_prefix/bin" core/busybox bin/sh
+  _fix_interpreter_in_path "$pkg_prefix/bin" core/busybox bin/env
+  _fix_interpreter_in_path "$pkg_prefix/bin" core/python bin/python
+  # build_line "Fix bin/couchbase-server ... yes this needs lots of work"
+  # #       fix the following files:
+  # #       DEFAULT_CONFIG_DIR=$pkg_svc_config_path/couchdb/default.d
+  # #       DEFAULT_CONFIG_FILE=$pkg_svc_config_path/default.ini
+  # #       LOCAL_CONFIG_DIR=$pkg_svc_config_path/local.d
+  # #       LOCAL_CONFIG_FILE=$pkg_svc_config_path/local.ini
+  # #       PIDFILE
+  # #       COOKIEFILE
+  # #       datadir
+  # #       config_path
+  #
+  # # configs
+  # # TODO: fix $pkg_prefix/etc/logrotate.d/couchdb by storing into svc dir
+  # # TODO: fix $pkg_prefix/etc/couchbase/static_config by storing logs into svc dir
+}
+
+do_end() {
+  pushd /lib64 > /dev/null
+  unlink ld-linux-x86-64.so.2
+  popd > /dev/null
+}
+
+# private #
+_fix_interpreter_in_path() {
+  local path=$1
+  local pkg=$2
+  local int=$3
+
+  find "$path" -type f -executable \
+    -exec sh -c 'file -i "$1" | egrep -q "(plain|x-shellscript); charset=us-ascii"' _ {} \; \
+    -exec sh -c 'head -n 1 "$1" | grep -q "$int"' _ {} \; \
+    -exec sh -c 'echo "$1"' _ {} \; > /tmp/fix_interpreter_in_path_list
+  grep -v '^ *#' < /tmp/fix_interpreter_in_path_list | while IFS= read -r line
+  do
+    fix_interpreter "$line" "$pkg" "$int"
+  done
+  rm -rf /tmp/fix_interpreter_in_path_list
 }
