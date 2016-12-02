@@ -1,5 +1,20 @@
 #!/bin/bash
 
-ulimit -n 40960
-ulimit -c unlimited
-ulimit -l unlimited
+# echo "Setting up ulimits"
+# ulimit -n 40960
+# ulimit -c unlimited
+# ulimit -l unlimited
+#
+
+mkdir -p {{ pkg.svc_path }}/{{ cfg.path.logs }}
+mkdir -p {{ pkg.svc_path }}/{{ cfg.path.tmp }}
+mkdir -p {{ pkg.svc_path }}/{{ cfg.path.etc }}
+mkdir -p {{ pkg.svc_path }}/{{ cfg.path.default_config }}
+mkdir -p {{ pkg.svc_path }}/{{ cfg.path.local_config }}
+
+mkdir -p {{ pkg.svc_path }}/{{ cfg.couchdb.database }}
+mkdir -p {{ pkg.svc_path }}/{{ cfg.couchdb.view_index }}
+mkdir -p $(dirname {{ pkg.svc_path }}/{{ cfg.couchdb.urifile }})
+mkdir -p $(dirname {{ pkg.svc_path }}/{{ cfg.couchdb.logfile }})
+
+echo "woof"

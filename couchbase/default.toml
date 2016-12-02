@@ -1,0 +1,16 @@
+[path]
+  data = "data"
+  logs = "var/lib/couchbase/logs"
+  tmp  = "var/lib/couchbase/tmp"
+  etc  = "var/etc/couchbase"
+  nodefile  = "var/lib/couchbase/couchbase-server.node"
+  cookiefile = "var/lib/couchbase/couchbase-server.cookie"
+  pidfile = "var/lib/couchbase/couchbase-server.pid"
+  default_config = "var/etc/couchdb/default.d"
+  local_config = "var/etc/couchdb/local.d"
+
+[couchdb]
+  database = "var/lib/couchdb"
+  view_index = "var/lib/couchdb"
+  urifile = "var/run/couchdb/couch.uri"
+  logfile = " var/log/couchdb/couch.log"

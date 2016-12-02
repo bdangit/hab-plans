@@ -1,0 +1,38 @@
+{error_logger_mf_dir, "{{ pkg.svc_path }}/{{ cfg.path.logs }}"}.
+{path_config_bindir, "{{ pkg.path }}/bin"}.
+{path_config_etcdir, "{{ pkg.svc_path }}/{{ cfg.path.etc }}"}.
+{path_config_libdir, "{{ pkg.path }}/lib"}.
+{path_config_datadir, "{{ pkg.svc_path }}/{{ cfg.path.data }}"}.
+{path_config_tmpdir, "{{ pkg.svc_path }}/{{ cfg.path.tmp }}"}.
+{path_config_secdir, "{{ pkg.path }}/etc/security"}.
+
+{nodefile, "{{ pkg.svc_path }}/{{ cfg.path.nodefile }}"}.
+
+{loglevel_default, debug}.
+{loglevel_couchdb, info}.
+{loglevel_ns_server, debug}.
+{loglevel_error_logger, debug}.
+{loglevel_user, debug}.
+{loglevel_menelaus, debug}.
+{loglevel_ns_doctor, debug}.
+{loglevel_stats, debug}.
+{loglevel_rebalance, debug}.
+{loglevel_cluster, debug}.
+{loglevel_views, debug}.
+{loglevel_mapreduce_errors, debug}.
+{loglevel_xdcr, debug}.
+{loglevel_xdcr_trace, error}.
+{loglevel_access, info}.
+
+{disk_sink_opts,
+ [{rotation, [{compress, true},
+              {size, 41943040},
+              {num_files, 10},
+              {buffer_size_max, 52428800}]}]}.
+
+{disk_sink_opts_xdcr_trace,
+ [{rotation, [{compress, false},
+              {size, 83886080},
+              {num_files, 5}]}]}.
+
+{net_kernel_verbosity, 10}.
