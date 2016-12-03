@@ -20,7 +20,7 @@ pkg_deps=(
   core/coreutils
   core/gcc-libs
   core/glibc
-  bdangit/icu56
+  core/icu/56.1
 )
 
 pkg_build_deps=(
@@ -128,7 +128,9 @@ do_build() {
   build_line "Setting PYTHONPATH=$PYTHONPATH"
 
   if [[ -d "$V8_OUTPUTDIR" ]]; then
-    ./buildtools/linux64/gn clean "$V8_OUTPUTDIR"
+    if [ "$(ls -A $V8_OUTPUTDIR)" ]; then
+      ./buildtools/linux64/gn clean "$V8_OUTPUTDIR"
+    fi
   fi
 
   ./buildtools/linux64/gn gen "$V8_OUTPUTDIR" \
@@ -149,6 +151,9 @@ do_build() {
 }
 
 do_check() {
+  build_line "Fixing interpreter for some tools"
+  sed -i "s#/usr/bin/env python#$PYTHONPATH/bin/python#" "./tools/run-tests.py"
+
   # temporarily set this for testing
   export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$V8_OUTPUTDIR"
 
@@ -182,10 +187,11 @@ _fix_interpreter_in_path() {
   local pkg=$2
   local int=$3
 
-  find "$path" -type f -executable \
-    -exec sh -c 'file -i "$1" | egrep -q "(plain|x-shellscript); charset=us-ascii"' _ {} \; \
-    -exec sh -c 'head -n 1 "$1" | grep -q "$int"' _ {} \; \
+  find "$path" -type f \
+    -exec grep -Iq . {} \; \
+    -exec sh -c 'head -n 1 "$1" | grep -q "$2"' _ {} "$int" \; \
     -exec sh -c 'echo "$1"' _ {} \; > /tmp/fix_interpreter_in_path_list
+
   grep -v '^ *#' < /tmp/fix_interpreter_in_path_list | while IFS= read -r line
   do
     fix_interpreter "$line" "$pkg" "$int"
