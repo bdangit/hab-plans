@@ -19,17 +19,17 @@ pkg_shasum="nosum"
 
 pkg_deps=(
   core/busybox
-  core/curl
+  core/curl/7.51.0/20161104001410
   bdangit/erlang16
   core/glibc
   core/gcc-libs
   bdangit/icu56
   core/libevent
-  core/openssl
+  core/openssl/1.0.2j/20161102155324
   core/python2
   core/snappy
   bdangit/v8
-  core/zlib
+  core/zlib/1.2.8/20161015000012
 )
 pkg_build_deps=(
   core/findutils
@@ -205,21 +205,6 @@ do_install() {
   _fix_interpreter_in_path "$pkg_prefix/bin" core/busybox bin/sh
   _fix_interpreter_in_path "$pkg_prefix/bin" core/busybox bin/env
   _fix_interpreter_in_path "$pkg_prefix/bin" core/python2 bin/python
-  # build_line "Fix bin/couchbase-server ... yes this needs lots of work"
-  # #       fix the following files:
-  # #       DEFAULT_CONFIG_DIR=$pkg_svc_var_path/etc/couchdb/default.d
-  # #       DEFAULT_CONFIG_FILE=$pkg_svc_var_path/etc/couchdb/default.ini
-  # #       LOCAL_CONFIG_DIR=$pkg_svc_var_path/etc/couchdb/local.d
-  # #       LOCAL_CONFIG_FILE=$pkg_svc_var_path/etc/couchdb/local.ini
-  # #       PIDFILE=$pkg_svc_var_path/couchbase-server.pid
-  # #       COOKIEFILE=$pkg_svc_var_path/couchbase-server.cookie
-  # #       NODEFILE=$pkg_svc_var_path/couchbase-server.node
-  # #       datadir=$pkg_svc_var_path/data/
-  # #       config_path=$pkg_svc_config_path/etc/couchbase/static_config
-  # #       logs=$pkg_svc_var_path/logs/
-  #
-  # # configs
-  # # TODO: fix $pkg_prefix/etc/couchbase/static_config by storing logs into svc dir
 }
 
 do_end() {
