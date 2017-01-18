@@ -8,10 +8,6 @@ echo "WOOF: INIT"
 # ulimit -l unlimited
 #
 
-# mkdir -p {{ pkg.svc_path }}/{{ cfg.path.logs }}
-
-# mkdir -p {{ pkg.svc_path }}/{{ cfg.path.tmp }}
-
 mkdir -p {{ pkg.svc_path }}/{{ cfg.path.etc }}
 pushd {{ pkg.svc_path }}/{{ cfg.path.etc }} > /dev/null
 ln -s {{ pkg.svc_config_path }}/config config
@@ -35,9 +31,3 @@ mkdir -p {{ pkg.svc_path }}/{{ cfg.path.local_config }}
 pushd {{ pkg.svc_path }}/{{ cfg.path.local_config }} > /dev/null
 ln -s {{ pkg.svc_config_path }}/local.ini local.ini
 popd > /dev/null
-
-# couchdb setup
-# mkdir -p {{ pkg.svc_path }}/{{ cfg.path.couchdb.database_dir }}
-# mkdir -p {{ pkg.svc_path }}/{{ cfg.path.couchdb.view_index_dir }}
-# mkdir -p $(dirname {{ pkg.svc_path }}/{{ cfg.path.couchdb.uri_file }})
-# mkdir -p $(dirname {{ pkg.svc_path }}/{{ cfg.path.couchdb.log_file }})

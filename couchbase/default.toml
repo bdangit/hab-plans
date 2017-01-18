@@ -16,4 +16,4 @@ uri_file = "var/run/couchdb/couch.uri"
 log_file = "var/log/couchdb/couch.log"
 
 [couchdb]
-log_level = "debug" # info
+log_level = "info"

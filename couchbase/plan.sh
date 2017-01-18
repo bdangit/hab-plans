@@ -16,20 +16,21 @@ pkg_license=('Apache-2.0')
 pkg_upstream_url="https://github.com/couchbase/manifest"
 pkg_source="https://github.com/couchbase/manifest.git"
 pkg_shasum="nosum"
+pkg_expose=(8081 8092 8093 8094 11210)
 
 pkg_deps=(
+  bdangit/icu56
+  bdangit/v8
   core/busybox
-  core/curl/7.51.0/20161104001410
-  bdangit/erlang16
+  core/curl
+  core/erlang16
   core/glibc
   core/gcc-libs
-  bdangit/icu56
   core/libevent
-  core/openssl/1.0.2j/20161102155324
+  core/openssl
   core/python2
   core/snappy
-  bdangit/v8
-  core/zlib/1.2.8/20161015000012
+  core/zlib
 )
 pkg_build_deps=(
   core/findutils
@@ -45,7 +46,6 @@ pkg_build_deps=(
   core/ncurses
   core/patchelf
   core/sed
-  core/vim
 )
 pkg_bin_dirs=(bin)
 
@@ -103,7 +103,7 @@ do_unpack() {
 }
 
 do_prepare() {
-  build_line "Create link for /lib/ld-linux-x86-64.so.2 to make included 'go' happy"
+  debug "Create link for /lib/ld-linux-x86-64.so.2 to make included 'go' happy"
   pushd "/lib64" > /dev/null
   ln -s "$(hab pkg path core/glibc)/lib/ld-linux-x86-64.so.2"
   popd > /dev/null

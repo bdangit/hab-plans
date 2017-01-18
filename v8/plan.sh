@@ -20,7 +20,7 @@ pkg_deps=(
   core/coreutils
   core/gcc-libs
   core/glibc
-  core/icu/56.1
+  # bdangit/icu56
 )
 
 pkg_build_deps=(
@@ -75,9 +75,6 @@ do_download() {
       git checkout .
       popd > /dev/null
     done
-
-    build_line "Make sure v8 is in sync ..."
-    gclient sync
   else
     build_line "Fetching v8 ... this could take awhile"
     fetch v8
@@ -106,12 +103,20 @@ do_prepare() {
   build_line "Checkout 'tags/$pkg_version'"
   git checkout "tags/$pkg_version"
 
+  build_line "Make sure v8 is in sync ..."
+  pushd "$HAB_CACHE_SRC_PATH" > /dev/null
+  gclient sync
+  popd > /dev/null
+
   build_line "Patching included binaries in v8"
   binaries=(
     './buildtools/linux64/gn'
     './buildtools/linux64/clang-format'
   )
   _patchelf_binaries "${binaries[@]}"
+
+  build_line "Start with a clean $V8_OUTPUTDIR"
+  rm -rf $V8_OUTPUTDIR
 }
 
 do_build() {
@@ -127,12 +132,6 @@ do_build() {
   PYTHONPATH="$(pkg_path_for core/python2)"
   build_line "Setting PYTHONPATH=$PYTHONPATH"
 
-  if [[ -d "$V8_OUTPUTDIR" ]]; then
-    if [ "$(ls -A $V8_OUTPUTDIR)" ]; then
-      ./buildtools/linux64/gn clean "$V8_OUTPUTDIR"
-    fi
-  fi
-
   ./buildtools/linux64/gn gen "$V8_OUTPUTDIR" \
                           --fail-on-unused-args \
                           --args="binutils_path=\"$(pkg_path_for core/binutils)/bin\" \
@@ -140,11 +139,13 @@ do_build() {
                                   is_debug=false \
                                   is_clang=false \
                                   is_component_build=true \
+                                  ignore_elf32_limitations=true \
                                   linux_use_bundled_binutils=false \
                                   target_cpu=\"x64\" \
                                   use_gold=false \
                                   use_sysroot=false \
                                   v8_enable_backtrace=true \
+                                  v8_enable_i18n_support=false \
                                   v8_use_external_startup_data=true"
 
   $HAB_CACHE_SRC_PATH/depot_tools/ninja -C "$V8_OUTPUTDIR"
@@ -159,8 +160,7 @@ do_check() {
 
   # This will currently fail for 4 tests
   # ref: https://github.com/bdangit/hab-plans/issues/6
-  tools/run-tests.py --no-presubmit \
-                     --outdir "$V8_OUTPUTDIR"
+  tools/run-tests.py --no-presubmit --outdir "$V8_OUTPUTDIR"
 }
 
 do_install() {
