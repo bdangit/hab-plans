@@ -20,7 +20,6 @@ pkg_deps=(
   core/coreutils
   core/gcc-libs
   core/glibc
-  # bdangit/icu56
 )
 
 pkg_build_deps=(
