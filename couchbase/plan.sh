@@ -19,13 +19,13 @@ pkg_shasum="nosum"
 pkg_expose=(8081 8092 8093 8094 11210)
 
 pkg_deps=(
-  bdangit/icu56
   bdangit/v8
   core/busybox
   core/curl
   core/erlang16
   core/glibc
   core/gcc-libs
+  core/icu56
   core/libevent
   core/openssl
   core/python2
@@ -125,7 +125,7 @@ do_build() {
   OPENSSL_DIR=$(pkg_path_for core/openssl)
   LIBEVENT_DIR=$(pkg_path_for core/libevent)
   CURL_DIR=$(pkg_path_for core/curl)
-  ICU_DIR=$(pkg_path_for bdangit/icu56)
+  ICU_DIR=$(pkg_path_for core/icu56)
   SNAPPY_DIR=$(pkg_path_for core/snappy)
   FLATBUFFERS_DIR=$(pkg_path_for core/flatbuffers)
   V8_DIR=$(pkg_path_for bdangit/v8)
