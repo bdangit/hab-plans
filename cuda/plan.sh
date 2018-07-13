@@ -142,8 +142,6 @@ EOF
   rm -fr "${pkg_prefix}/opt/cuda/bin/uninstall_cuda_toolkit"*.pl
 
   # patch some bins
-  # export LD_RUN_PATH="${LD_RUN_PATH}":"${pkg_prefix}/opt/cuda/lib64":"${pkg_prefix}/opt/cuda/nvvm/lib64"
-
   build_line "patch cicc"
   patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" \
     --set-rpath "${LD_RUN_PATH}" \
@@ -159,30 +157,49 @@ EOF
     --set-rpath "${LD_RUN_PATH}" \
     "${pkg_prefix}/opt/cuda/libnsight/nsight"
 
-  for bins in bandwidthTest busGrind deviceQuery nbody oceanFFT randomFog vectorAdd; do
+  for bin in bandwidthTest busGrind deviceQuery nbody oceanFFT randomFog vectorAdd; do
+    build_line "patch ${bin}"
+    patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" \
+      --set-rpath "${LD_RUN_PATH}" \
+      "${pkg_prefix}/opt/cuda/extras/demo_suite/${bin}"
+  done
+
+  for bin in bin2c cudafe++ cuobjdump fatbinary nvcc nvdisasm nvlink nvprof nvprune ptxas; do
     build_line "patch ${bins}"
     patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" \
       --set-rpath "${LD_RUN_PATH}" \
-      "${pkg_prefix}/opt/cuda/extras/demo_suite/${bins}"
+      "${pkg_prefix}/opt/cuda/bin/${bin}"
   done
 
-  for bins in bin2c cudafe++ cuobjdump fatbinary nvcc nvdisasm nvlink nvprof nvprune ptxas; do
-    build_line "patch ${bins}"
+  for bin in cuda-gdbserver cuda-memcheck gpu-library-advisor; do
+    build_line "patch ${bin}"
     patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" \
       --set-rpath "${LD_RUN_PATH}" \
-      "${pkg_prefix}/opt/cuda/bin/${bins}"
+      "${pkg_prefix}/opt/cuda/bin/${bin}"
   done
 
-  for bins in cuda-gdb cuda-gdbserver cuda-memcheck gpu-library-advisor; do
-    build_line "patch ${bins}"
-    patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" \
-      --set-rpath "${LD_RUN_PATH}" \
-      "${pkg_prefix}/opt/cuda/bin/${bins}"
-  done
+  # cuda-gdb
+  # note: libncurses 6.1 is "designed to be source-compatible with 5.0 through 6.0"
+  patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" \
+    --set-rpath "${LD_RUN_PATH}" \
+    --replace-needed libncurses.so.5 libncurses.so.6 \
+    "${pkg_prefix}/opt/cuda/bin/cuda-gdb"
 
+  fix_interpreter "${pkg_prefix}/opt/cuda/bin/computeprof" core/busybox-static bin/sh
   fix_interpreter "${pkg_prefix}/opt/cuda/bin/nvvp" core/busybox-static bin/sh
   fix_interpreter "${pkg_prefix}/opt/cuda/bin/nsight" core/busybox-static bin/sh
   fix_interpreter "${pkg_prefix}/opt/cuda/bin/nsight_ee_plugins_manage.sh" core/busybox-static bin/sh
+
+  # patch some libs
+  for lib in OpenCL accinj64 cublas cudart cufft cufftw cuinj64 curand cusolver cusparse nppc nppial nppicc nppicom nppidei nppif nppig nppim nppist nppisu nppim nppist nppisu nppitc npps nvToolsExt nvblas nvgraph nvrtc-builtins nvrtc; do
+    build_line "patch ${lib}"
+    patchelf --set-rpath "${LD_RUN_PATH}" "${pkg_prefix}/opt/cuda/lib64/lib${lib}.so"
+  done
+
+  for lib in $(ls "${pkg_prefix}/opt/cuda/lib64/stubs/"*.so); do
+    build_line "patch ${lib}"
+    patchelf --set-rpath "${LD_RUN_PATH}" "${lib}"
+  done
 }
 
 do_strip() {
