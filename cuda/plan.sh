@@ -181,10 +181,9 @@ EOF
   # cuda-gdb
   # note: libncurses 6.1 is "designed to be source-compatible with 5.0 through 6.0"
   build_line "patch ${pkg_prefix}/opt/cuda/bin/cuda-gdb"
-  patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" \
-    --set-rpath "${LD_RUN_PATH}" \
-    --replace-needed libncurses.so.5 libncurses.so.6 \
-    "${pkg_prefix}/opt/cuda/bin/cuda-gdb"
+  patchelf --interpreter "$(pkg_path_for glibc)/lib/ld-linux-x86-64.so.2" "${pkg_prefix}/opt/cuda/bin/cuda-gdb"
+  patchelf --replace-needed libncurses.so.5 libncurses.so.6 "${pkg_prefix}/opt/cuda/bin/cuda-gdb"
+  patchelf --set-rpath "${LD_RUN_PATH}" "${pkg_prefix}/opt/cuda/bin/cuda-gdb"
 
   fix_interpreter "${pkg_prefix}/opt/cuda/bin/computeprof" core/busybox-static bin/sh
   fix_interpreter "${pkg_prefix}/opt/cuda/bin/nvvp" core/busybox-static bin/sh
