@@ -26,10 +26,6 @@ do_build() {
   make
 }
 
-do_check() {
-  attach
-}
-
 do_install() {
-  cp -av bin/* "${pkg_prefix}/bin/"
+  cp -av bin/x86_64/linux/release/* "${pkg_prefix}/bin/"
 }
