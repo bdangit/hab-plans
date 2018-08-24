@@ -13,6 +13,7 @@ pkg_shasum="4b172847196d5b2ab645625dd7953ddf5cffa04b2a3c45689d33ef92fc953d90"
 pkg_deps=(
   bdangit/cuda-libs
   core/gcc-libs
+  core/glibc
 )
 pkg_build_deps=(
   bdangit/cuda
