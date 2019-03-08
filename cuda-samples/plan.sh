@@ -16,14 +16,14 @@ pkg_deps=(
   core/glibc
 )
 pkg_build_deps=(
-  bdangit/cuda
+  core/cuda
   core/make
 )
 
 pkg_bin_dirs=(bin)
 
 do_build() {
-  export CUDA_PATH=$(pkg_path_for bdangit/cuda)
+  export CUDA_PATH=$(pkg_path_for core/cuda)
   make
 }
 

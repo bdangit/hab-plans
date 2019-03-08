@@ -5,9 +5,10 @@ pkg_description="cuda cmake example"
 pkg_license=('MIT')
 pkg_maintainer='Ben Dang <me@bdang.it>'
 pkg_deps=(
-  core/gcc-libs
+  bdangit/gcc7-libs
   core/glibc
   bdangit/cuda-libs
+  core/zeromq
 )
 pkg_build_deps=(
   bdangit/cuda
