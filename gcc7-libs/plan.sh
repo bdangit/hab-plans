@@ -13,7 +13,7 @@ pkg_deps=(
 )
 # Add the same version of the full gcc package as a build dep
 pkg_build_deps=(
-  "core/gcc7/$pkg_version"
+  "bdangit/gcc7/$pkg_version"
   core/patchelf
 )
 
